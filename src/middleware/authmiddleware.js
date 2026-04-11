@@ -1,6 +1,8 @@
 const passport = require('passport');  
 require("../config/passport");  
+
 // protect middleware with JSON error response
+
 const protect = (req, res, next) => {
     passport.authenticate('jwt', { session: false }, (err, user, info) => {
         if (err) {

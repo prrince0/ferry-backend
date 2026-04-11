@@ -2,18 +2,18 @@ const db = require("../config/database");
 
 // Create new user (INSERT)
 const createUser = async (userData) => {
-    const { username, email, password } = userData;
+    const { full_name, email, password_hash } = userData;
     
-    if (!username || !email || !password) {
-        throw new Error("Username, email and password are required");
+    if (!full_name || !email || !password_hash) {
+        throw new Error("Full name, email and password are required");
     }
     
-    const query = "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
-    const [result] = await db.query(query, [username, email, password]);
+    const query = "INSERT INTO users (full_name, email, password_hash) VALUES (?, ?, ?)";
+    const [result] = await db.query(query, [full_name, email, password_hash]);
     
     return {
         id: result.insertId,
-        username,
+        full_name,
         email
     };
 };

@@ -1,17 +1,27 @@
 const express = require("express");
-const app = express();
-
 const dotenv = require("dotenv");
+
+// ✅ LOAD .env FIRST
+dotenv.config();
+console.log("JWT_SECRET from env:", process.env.JWT_SECRET);
+console.log("DB_PASSWORD from env:", process.env.DB_PASSWORD ? "✅ Loaded" : "❌ Missing");
+console.log("DB_HOST from env:", process.env.DB_HOST ? "✅ Loaded" : "❌ Missing");
+
+const app = express();
+const cors = require("cors");
 const passport = require("./src/config/passport");
 const routes = require("./src/routes/authroutes");
+const ferryRoutes = require("./src/routes/ferryRoutes");
 const connection = require("./src/config/database");
 
-dotenv.config();
-
+// Middleware
+app.use(cors());
 app.use(express.json());
 app.use(passport.initialize());
 
-app.use(routes);
+// Routes
+app.use("/api/auth", routes);
+app.use("/api/ferries", ferryRoutes);
 
 app.get("/", (req, res) => {
     res.send("Hello, World!");
