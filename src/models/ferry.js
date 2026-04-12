@@ -1,10 +1,10 @@
 const db = require("../config/database");
 
-// ✅ CREATE FERRY
+//  CREATE FERRY
 const createFerry = async (ferryData) => {
     const { name, vehicle_capacity, passenger_capacity, image_url, amenities } = ferryData;
 
-    // 🔐 Validation
+    //  Validation
     if (!name) {
         throw new Error("Ferry name is required");
     }
@@ -17,11 +17,11 @@ const createFerry = async (ferryData) => {
         throw new Error("Vehicle capacity cannot be negative");
     }
 
-    // ✅ Defaults
+    // Defaults
     const vehicleCap = vehicle_capacity ?? 0;
     const amenitiesJson = amenities ? JSON.stringify(amenities) : null;
 
-    // 🧾 Query
+    //  Query
     const query = `
         INSERT INTO ferries (name, vehicle_capacity, passenger_capacity, image_url, amenities)
         VALUES (?, ?, ?, ?, ?)
@@ -35,7 +35,7 @@ const createFerry = async (ferryData) => {
         amenitiesJson
     ]);
 
-    // ✅ Return created ferry
+    //  Return created ferry
     return {
         id: result.insertId,
         name,
@@ -46,7 +46,7 @@ const createFerry = async (ferryData) => {
     };
 };
 
-// ✅ GET BY ID
+//  GET BY ID
 const getFerryById = async (id) => {
     const query = "SELECT * FROM ferries WHERE id = ?";
     const [rows] = await db.query(query, [id]);
@@ -55,25 +55,25 @@ const getFerryById = async (id) => {
 
     const ferry = rows[0];
 
-    // 🔄 Convert JSON string → object
+    //  Convert JSON string → object
     ferry.amenities = ferry.amenities ? JSON.parse(ferry.amenities) : null;
 
     return ferry;
 };
 
-// ✅ GET ALL
+//  GET ALL
 const allFerries = async () => {
     const query = "SELECT * FROM ferries";
     const [rows] = await db.query(query);
 
-    // 🔄 Convert JSON for each ferry
+    //  Convert JSON for each ferry
     return rows.map(ferry => ({
         ...ferry,
         amenities: ferry.amenities ? JSON.parse(ferry.amenities) : null
     }));
 };
 
-// ✅ UPDATE
+// UPDATE
 const updateFerry = async (id, ferryData) => {
     const { name, vehicle_capacity, passenger_capacity, image_url, amenities } = ferryData;
 
@@ -94,7 +94,7 @@ const updateFerry = async (id, ferryData) => {
         id
     ]);
 
-    // ❌ If no row updated
+    //  If no row updated
     if (result.affectedRows === 0) {
         return null;
     }
@@ -103,7 +103,7 @@ const updateFerry = async (id, ferryData) => {
     return await getFerryById(id);
 };
 
-// ✅ DELETE
+//  DELETE
 const deleteFerry = async (id) => {
     const query = "DELETE FROM ferries WHERE id = ?";
     const [result] = await db.query(query, [id]);

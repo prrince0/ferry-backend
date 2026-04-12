@@ -1,6 +1,6 @@
 const ferry = require('../models/ferry');
 
-// ✅ CREATE
+//  CREATE
 const createFerry = async (req, res) => {
     const { name, vehicle_capacity, passenger_capacity, image_url, amenities } = req.body;
 
@@ -37,7 +37,7 @@ const createFerry = async (req, res) => {
     }
 };
 
-// ✅ UPDATE
+//  UPDATE
 const updateFerry = async (req, res) => {
     const { id } = req.params;
     const { name, vehicle_capacity, passenger_capacity, image_url, amenities } = req.body;
@@ -90,7 +90,7 @@ const updateFerry = async (req, res) => {
     }
 };
 
-// ✅ DELETE
+//  DELETE
 const deleteFerry = async (req, res) => {
     const { id } = req.params;
 
@@ -120,7 +120,7 @@ const deleteFerry = async (req, res) => {
     }
 };
 
-// ✅ GET BY ID
+//  GET BY ID
 const getFerryById = async (req, res) => {
     const { id } = req.params;
 
@@ -151,7 +151,7 @@ const getFerryById = async (req, res) => {
     }
 };
 
-// ✅ GET ALL
+//  GET ALL
 const getAllFerries = async (req, res) => {
     try {
         const result = await ferry.allFerries();
