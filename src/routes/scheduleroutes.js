@@ -7,5 +7,7 @@ router.get('/test', (req, res) => {
 router.post('/', scheduleController.createSchedule);
 router.put('/:id', scheduleController.updateSchedule);
 router.delete('/:id', scheduleController.deleteSchedule);
+router.get('/:id', scheduleController.findScheduleById);
+router.get('/', scheduleController.findAllSchedules);
 
 module.exports = router;

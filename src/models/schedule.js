@@ -62,9 +62,31 @@ const deleteSchedule = async(scheduleId) => {
     }
 };
 
+// find schedule by id
+
+const findScheduleById = async(scheduleId) => {
+   const query = "SELECT * FROM schedules WHERE id = ?";
+   const [result] = await db.query(query, [scheduleId]);
+    if (result.length === 0) {
+        throw new Error("Schedule not found");
+    }
+    return result[0]; 
+};
+
+const findAllSchedules = async() => {
+    const query = "SELECT * FROM schedules";
+    const [result] = await db.query(query);
+    return result;
+};
+
+
+
+
 module.exports = {
   createSchedule,
   updateSchedule,
-  deleteSchedule
+  deleteSchedule,
+  findScheduleById,
+  findAllSchedules
 };
 
