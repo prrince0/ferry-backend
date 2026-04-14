@@ -1,7 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 
-// ✅ LOAD .env FIRST
+//  LOAD .env FIRST
 dotenv.config();
 
 const app = express();
