@@ -10,6 +10,7 @@ const passport = require("./src/config/passport");
 const routes = require("./src/routes/authroutes");
 const ferryRoutes = require("./src/routes/ferryRoutes");
 const scheduleRoutes = require("./src/routes/scheduleroutes");
+const bookingRoutes = require('./src/routes/bookingroutes');
 const connection = require("./src/config/database");
 
 // Middleware
@@ -22,6 +23,7 @@ app.use(passport.initialize());
 app.use("/api/auth", routes);
 app.use("/api/ferries", ferryRoutes);
 app.use("/api/schedules", scheduleRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 app.get("/", (req, res) => {
     res.send("Hello, World!");

@@ -1,99 +1,98 @@
-const booking = require("../models/booking");
+const db = require("../config/database");
+const Booking = require("../models/booking");
+const Schedule = require("../models/schedule");
 
 const isSeatAvailable = async (scheduleId, seatNumber) => {
-    const {scheduleId, seatNumber} = req.body;
-    if(!scheduleId || !seatNumber) {
-        return res.status(400).json({ error: "Schedule ID and seat number are required" });
+    if (!scheduleId || !seatNumber) {
+        throw new Error("Schedule ID and seat number are required");
     }
-    if(seatNumber<=0){
-        return res.status(400).json({ error: "Seat number must be greater than 0" });
-    }
-    const query = `SELECT COUNT(*) AS bookedSeats FROM bookings WHERE schedule_id = ? AND seat_number = ?`;
-    db.query(query, [scheduleId, seatNumber], async (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: "Database error" });
-        }
-        const bookedSeats = results[0].bookedSeats;
-        const {total_Seats} = await schedule.findScheduleById(scheduleId);
-        if (bookedSeats + seats > totalSeats) {
-            return res.status(400).json({ error: "Not enough seats available" });
-        }
-        res.status(200).json({ message: "Seats are available" });
-    });
+    
+    const query = "SELECT COUNT(*) as count FROM bookings WHERE schedule_id = ? AND seat_number = ? AND status = 'confirmed'";
+    const [rows] = await db.query(query, [scheduleId, seatNumber]);
+    
+    return rows[0].count === 0;
 };
 
 const createBooking = async (req, res) => {
-    const{userId, ferryId, date, time, seats} = req.body;
-    if(!userId || !ferryId || !date || !time || !seats) {
-        return res.status(400).json({ error: "Missing required booking data" });
-    }
     try {
-        const newBooking = await booking.Booking({ userId, ferryId, date, time, seats });
+        const userId = req.user.id;
+        const { schedule_id, seat_number } = req.body;
+        
+        if (!schedule_id || !seat_number) {
+            return res.status(400).json({ error: "Schedule ID and seat number are required" });
+        }
+        
+        const available = await isSeatAvailable(schedule_id, seat_number);
+        if (!available) {
+            return res.status(400).json({ error: "Seat already booked" });
+        }
+        
+        const schedule = await Schedule.getScheduleById(schedule_id);
+        if (!schedule) {
+            return res.status(404).json({ error: "Schedule not found" });
+        }
+        
+        const bookingData = {
+            user_id: userId,
+            schedule_id: schedule_id,
+            seat_number: seat_number,
+            total_price: schedule.base_price,
+            status: "confirmed"
+        };
+        
+        const newBooking = await Booking.createBooking(bookingData);
         res.status(201).json(newBooking);
+        
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
-
-const calculatePrice =  (req,res,next) => {
-    const{ScheduleId, seats} = req.body;
-    if(!ScheduleId || !seats) {
-        return res.status(400).json({error:"Missing required fields"});
+const getBookingById = async (req, res) => {
+    const { id } = req.params;  
+    
+    if (!id) {
+        return res.status(400).json({ error: "Booking ID is required" });
     }
     
-    const {scheduleId,} = req.params;
-    const query = `SELECT base_price FROM schedules WHERE id = ?`;
-    return base_price;
-
-    const totalPrice = base_price * seats;
-    const query2 = `INSERT INTO bookings (user_id, schedule_id, seat_number, total_price) VALUES (?, ?, ?, ?)`;  
-    req.body.totalPrice = totalPrice;
-    next();
-;}
-
-const getBookingByID = async(req,res) => {
-    const{BookingId} = req.params;
-    if(!BookingId){
-        return res.status(400).json({error:"Booking ID is required"});
-    }
     try {
-        const bookinData = await booking.getBookinngById(BookingId);
-        if(!bookinData) {
-            return res.status(404).json({error:"Booking not found"});
-        }        res.status(200).json(bookinData);
+        const bookingData = await Booking.getBookingById(id);  
+        if (!bookingData) {
+            return res.status(404).json({ error: "Booking not found" });
+        }
+        res.status(200).json(bookingData);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
- catch (error) {
-        res.status(500).json({error:error.message});
-    }   
 };
-const getBookingsByUserId = async(req,res) => {
-    const{userId} = req.params;
-    if(!userId){
-        return res.status(400).json({error:"User ID is required"});
-    }
+
+const getMyBookings = async (req, res) => {
+    const userId = req.user.id;  
+    
     try {
-        const bookings = await booking.getBookingsByUserId(userId);
+        const bookings = await Booking.getBookingsByUserId(userId);
         res.status(200).json(bookings);
     } catch (error) {
-        res.status(500).json({error:error.message});
+        res.status(500).json({ error: error.message });
     }
 };
 
-const cancelBooking = async(req,res)=>{
-    const{BookingId} = req.params;
-    if(!BookingId){
-        return res.status(400).json({error:"Booking ID is reqired"});
+const cancelBooking = async (req, res) => {
+    const { id } = req.params;  
+    
+    if (!id) {
+        return res.status(400).json({ error: "Booking ID is required" });
     }
-    try{
-        const result = await booking.cancelBooking(BookingId);
-        if(result.affectedRows === 0) {
-            return res.status(404).json({error:"Booking not found"});
+    
+    try {
+        const result = await Booking.cancelBooking(id);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Booking not found" });
         }
-        res.status(200).json({message:"Booking cancelled successfully"});
+        res.status(200).json({ message: "Booking cancelled successfully" });
     } catch (error) {
-        res.status(500).json({error:error.kmessage});
+        res.status(500).json({ error: error.message });  
     }
 };
 
-module.exports = {createBooking, getBookingByID, getBookingsByUserId, cancelBooking};
+module.exports = { createBooking, getBookingById, getMyBookings, cancelBooking };
