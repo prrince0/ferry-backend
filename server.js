@@ -1,7 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 
-//  LOAD .env FIRST
+
 dotenv.config();
 
 const app = express();
@@ -12,6 +12,7 @@ const ferryRoutes = require("./src/routes/ferryRoutes");
 const scheduleRoutes = require("./src/routes/scheduleroutes");
 const bookingRoutes = require('./src/routes/bookingroutes');
 const connection = require("./src/config/database");
+const redisClient = require('./src/config/redis');
 
 // Middleware
 app.use(cors());
