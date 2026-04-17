@@ -13,7 +13,9 @@ const scheduleRoutes = require("./src/routes/scheduleroutes");
 const bookingRoutes = require('./src/routes/bookingroutes');
 const connection = require("./src/config/database");
 const redisClient = require('./src/config/redis');
+const initializeSeatCounters = require('./src/utils/redisinit');
 
+initializeSeatCounters();
 // Middleware
 app.use(cors());
 app.use(express.json());
