@@ -41,6 +41,7 @@ const createBooking = async (req, res) => {
             return res.status(404).json({ error: "Schedule not found" });
         }
         
+    
         const bookingData = {
             user_id: userId,
             schedule_id: schedule_id,
@@ -50,6 +51,8 @@ const createBooking = async (req, res) => {
         };
         
         const newBooking = await Booking.createBooking(bookingData);
+        // Decrease Redis counter
+      await redisClient.decr(`schedule:${schedule_id}:available_seats`);
         res.status(201).json(newBooking);
         
     } catch (error) {
@@ -94,11 +97,30 @@ const cancelBooking = async (req, res) => {
     }
     
     try {
+        // First, get the booking to find schedule_id
+        const [booking] = await db.query(
+            "SELECT schedule_id FROM bookings WHERE id = ?",
+            [id]
+        );
+        
+        if (booking.length === 0) {
+            return res.status(404).json({ error: "Booking not found" });
+        }
+        
+        const schedule_id = booking[0].schedule_id;
+        
+        // Then cancel the booking (only once)
         const result = await Booking.cancelBooking(id);
+        
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: "Booking not found" });
         }
+        
+        // Increase Redis counter
+        await redisClient.incr(`schedule:${schedule_id}:available_seats`);
+        
         res.status(200).json({ message: "Booking cancelled successfully" });
+        
     } catch (error) {
         res.status(500).json({ error: error.message });  
     }
