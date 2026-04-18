@@ -1,12 +1,21 @@
 const db = require("../config/database");
 const Booking = require("../models/booking");
 const Schedule = require("../models/schedule");
+const redisClient = require('../config/redis');
 
 const isSeatAvailable = async (scheduleId, seatNumber) => {
     if (!scheduleId || !seatNumber) {
         throw new Error("Schedule ID and seat number are required");
     }
     
+    // 1. Check Redis for available seats count
+    const availableSeats = await redisClient.get(`schedule:${scheduleId}:available_seats`);
+    
+    if (!availableSeats || parseInt(availableSeats) <= 0) {
+        throw new Error("No seats available on this sailing");
+    }
+    
+    // 2. Check if specific seat is already booked (MySQL)
     const query = "SELECT COUNT(*) as count FROM bookings WHERE schedule_id = ? AND seat_number = ? AND status = 'confirmed'";
     const [rows] = await db.query(query, [scheduleId, seatNumber]);
     
@@ -27,7 +36,7 @@ const createBooking = async (req, res) => {
             return res.status(400).json({ error: "Seat already booked" });
         }
         
-        const schedule = await Schedule.getScheduleById(schedule_id);
+        const schedule = await Schedule.findScheduleById(schedule_id);
         if (!schedule) {
             return res.status(404).json({ error: "Schedule not found" });
         }
