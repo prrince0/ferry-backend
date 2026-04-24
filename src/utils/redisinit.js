@@ -1,5 +1,6 @@
-const redisClient = require('../config/redis');
+const redisClient = require('../config/upstash');
 const db = require('../config/database');
+const getRedisKey = require('./redisKey');
 
 async function initializeSeatCounters() {
     try {
@@ -8,18 +9,14 @@ async function initializeSeatCounters() {
             FROM schedules s
             JOIN ferries f ON s.ferry_id = f.id
         `);
-        
         for (const schedule of schedules) {
-            const { schedule_id, passenger_capacity } = schedule;
-            await redisClient.set(`schedule:${schedule_id}:available_seats`, passenger_capacity);
-            console.log(`Set schedule:${schedule_id}:available_seats = ${passenger_capacity}`);
+            const key = getRedisKey(`schedule:${schedule.schedule_id}:available_seats`);
+            await redisClient.set(key, schedule.passenger_capacity);
+            console.log(`Set ${key} = ${schedule.passenger_capacity}`);
         }
-        
-        console.log(`Initialized ${schedules.length} seat counters in Redis`);
-        
+        console.log(`Initialized ${schedules.length} seat counters`);
     } catch (error) {
         console.error('Failed to initialize seat counters:', error);
     }
 }
-
 module.exports = initializeSeatCounters;

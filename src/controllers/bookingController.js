@@ -1,15 +1,18 @@
 const db = require("../config/database");
 const Booking = require("../models/booking");
 const Schedule = require("../models/schedule");
-const redisClient = require('../config/redis');
+const redisClient = require('../config/upstash');
+const getRedisKey = require('../utils/redisKey');  
+
 
 const isSeatAvailable = async (scheduleId, seatNumber) => {
     if (!scheduleId || !seatNumber) {
         throw new Error("Schedule ID and seat number are required");
     }
     
-    // 1. Check Redis for available seats count
-    const availableSeats = await redisClient.get(`schedule:${scheduleId}:available_seats`);
+    // 1. Check Redis for available seats count (using prefixed key)
+    const seatsKey = getRedisKey(`schedule:${scheduleId}:available_seats`);
+    const availableSeats = await redisClient.get(seatsKey);
     
     if (!availableSeats || parseInt(availableSeats) <= 0) {
         throw new Error("No seats available on this sailing");
@@ -22,6 +25,7 @@ const isSeatAvailable = async (scheduleId, seatNumber) => {
     return rows[0].count === 0;
 };
 
+// ------------------- Create Booking -------------------
 const createBooking = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -31,17 +35,19 @@ const createBooking = async (req, res) => {
             return res.status(400).json({ error: "Schedule ID and seat number are required" });
         }
         
+        // Check availability (throws error if not available)
         const available = await isSeatAvailable(schedule_id, seat_number);
         if (!available) {
             return res.status(400).json({ error: "Seat already booked" });
         }
         
+        // Get schedule details for price
         const schedule = await Schedule.findScheduleById(schedule_id);
         if (!schedule) {
             return res.status(404).json({ error: "Schedule not found" });
         }
         
-    
+        // Prepare booking data
         const bookingData = {
             user_id: userId,
             schedule_id: schedule_id,
@@ -50,9 +56,13 @@ const createBooking = async (req, res) => {
             status: "confirmed"
         };
         
+        // Create booking in MySQL
         const newBooking = await Booking.createBooking(bookingData);
-        // Decrease Redis counter
-      await redisClient.decr(`schedule:${schedule_id}:available_seats`);
+        
+        // Decrease Redis seat counter (with prefix)
+        const decrKey = getRedisKey(`schedule:${schedule_id}:available_seats`);
+        await redisClient.decr(decrKey);
+        
         res.status(201).json(newBooking);
         
     } catch (error) {
@@ -60,6 +70,7 @@ const createBooking = async (req, res) => {
     }
 };
 
+// ------------------- Get Booking by ID -------------------
 const getBookingById = async (req, res) => {
     const { id } = req.params;  
     
@@ -78,6 +89,7 @@ const getBookingById = async (req, res) => {
     }
 };
 
+// ------------------- Get My Bookings -------------------
 const getMyBookings = async (req, res) => {
     const userId = req.user.id;  
     
@@ -89,6 +101,7 @@ const getMyBookings = async (req, res) => {
     }
 };
 
+// ------------------- Cancel Booking -------------------
 const cancelBooking = async (req, res) => {
     const { id } = req.params;  
     
@@ -109,15 +122,16 @@ const cancelBooking = async (req, res) => {
         
         const schedule_id = booking[0].schedule_id;
         
-        // Then cancel the booking (only once)
+        // Cancel the booking in MySQL
         const result = await Booking.cancelBooking(id);
         
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: "Booking not found" });
         }
         
-        // Increase Redis counter
-        await redisClient.incr(`schedule:${schedule_id}:available_seats`);
+        // Increase Redis seat counter (with prefix)
+        const incrKey = getRedisKey(`schedule:${schedule_id}:available_seats`);
+        await redisClient.incr(incrKey);
         
         res.status(200).json({ message: "Booking cancelled successfully" });
         
