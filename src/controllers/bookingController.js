@@ -3,7 +3,7 @@ const Booking = require("../models/booking");
 const Schedule = require("../models/schedule");
 const redisClient = require('../config/upstash');
 const getRedisKey = require('../utils/redisKey');  
-
+const { waitlistUser, getWaitlistPosition } = require('../services/waitlistService');
 
 const isSeatAvailable = async (scheduleId, seatNumber) => {
     if (!scheduleId || !seatNumber) {
@@ -37,9 +37,16 @@ const createBooking = async (req, res) => {
         
         // Check availability (throws error if not available)
         const available = await isSeatAvailable(schedule_id, seat_number);
-        if (!available) {
-            return res.status(400).json({ error: "Seat already booked" });
-        }
+       if (!available) {
+    // Add user to waitlist
+    await waitlistUser(schedule_id, userId);
+    const position = await getWaitlistPosition(schedule_id, userId);
+    return res.status(200).json({
+        message: "No seats available. You have been added to the waitlist.",
+        waitlisted: true,
+        position: position
+    });
+}
         
         // Get schedule details for price
         const schedule = await Schedule.findScheduleById(schedule_id);
@@ -112,7 +119,7 @@ const cancelBooking = async (req, res) => {
     try {
         // First, get the booking to find schedule_id
         const [booking] = await db.query(
-            "SELECT schedule_id FROM bookings WHERE id = ?",
+            "SELECT schedule_id, seat_number FROM bookings WHERE id = ?",
             [id]
         );
         
@@ -121,6 +128,7 @@ const cancelBooking = async (req, res) => {
         }
         
         const schedule_id = booking[0].schedule_id;
+        const freedSeat = booking[0].seat_number;
         
         // Cancel the booking in MySQL
         const result = await Booking.cancelBooking(id);
@@ -129,9 +137,24 @@ const cancelBooking = async (req, res) => {
             return res.status(404).json({ error: "Booking not found" });
         }
         
-        // Increase Redis seat counter (with prefix)
+        // Increase Redis seat counter
         const incrKey = getRedisKey(`schedule:${schedule_id}:available_seats`);
         await redisClient.incr(incrKey);
+        
+        // Promote next user from waitlist
+        const promotedUserId = await promoteNextInWaitlist(schedule_id);
+        if (promotedUserId) {
+            const schedule = await Schedule.findScheduleById(schedule_id);
+            const bookingData = {
+                user_id: promotedUserId,
+                schedule_id: schedule_id,
+                seat_number: freedSeat,
+                total_price: schedule.base_price,
+                status: "confirmed"
+            };
+            await Booking.createBooking(bookingData);
+            console.log(`✅ User ${promotedUserId} auto-booked for schedule ${schedule_id}, seat ${freedSeat}`);
+        }
         
         res.status(200).json({ message: "Booking cancelled successfully" });
         
