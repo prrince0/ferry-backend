@@ -29,28 +29,63 @@ const createSchedule = async(scheduleData) => {
 };
 
 // update scheduale
-const updateSchedule = async(scheduleId, scheduleData) => {     
-  const { ferry_id, origin, destination, departure_time, arrival_time, base_price } = scheduleData;
+const updateSchedule = async (scheduleId, scheduleData) => {
+  const {
+    ferry_id,
+    origin,
+    destination,
+    departure_time,
+    arrival_time,
+    base_price,
+    status
+  } = scheduleData;
+
   if (!ferry_id || !origin || !destination || !departure_time || !arrival_time || !base_price) {
     throw new Error("All fields are required");
-}
+  }
 
- if (base_price <= 0) throw new Error("Base price must be greater than 0");
+  if (base_price <= 0) {
+    throw new Error("Base price must be greater than 0");
+  }
 
- if (new Date(departure_time) >= new Date(arrival_time)) {
+  if (new Date(departure_time) >= new Date(arrival_time)) {
     throw new Error("Arrival time must be after departure time");
-}
-    const query = `
-        UPDATE schedules
-        SET ferry_id = ?, origin = ?, destination = ?, departure_time = ?, arrival_time = ?, base_price = ?
-        WHERE id = ?
-    `;
-    const [result] = await db.query(query, [ferry_id, origin, destination, departure_time, arrival_time, base_price, scheduleId]);
-    if (result.affectedRows === 0) {
-        throw new Error("Schedule not found");
-    }
-    const [updated] = await db.query("SELECT * FROM schedules WHERE id = ?", [scheduleId]);
-    return updated[0];
+  }
+
+  const query = `
+    UPDATE schedules
+    SET
+      ferry_id = ?,
+      origin = ?,
+      destination = ?,
+      departure_time = ?,
+      arrival_time = ?,
+      base_price = ?,
+      status = ?
+    WHERE id = ?
+  `;
+
+  const [result] = await db.query(query, [
+    ferry_id,
+    origin,
+    destination,
+    departure_time,
+    arrival_time,
+    base_price,
+    status,
+    scheduleId
+  ]);
+
+  if (result.affectedRows === 0) {
+    throw new Error("Schedule not found");
+  }
+
+  const [updated] = await db.query(
+    "SELECT * FROM schedules WHERE id = ?",
+    [scheduleId]
+  );
+
+  return updated[0];
 };
 
 // delete scheduale

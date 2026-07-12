@@ -1,10 +1,19 @@
 const db = require("../config/database");
 
 //  CREATE FERRY
-const createFerry = async (ferryData) => {
-    const { name, vehicle_capacity, passenger_capacity, image_url, amenities } = ferryData;
+const createFerry = async (ferryData, req) => {
+    const {
+        name,
+        vehicle_capacity,
+        passenger_capacity,
+        image_url,
+        amenities,
+    } = ferryData;
 
-    //  Validation
+    // Logged-in admin ID
+    const created_by = req.user.id;
+
+    // Validation
     if (!name) {
         throw new Error("Ferry name is required");
     }
@@ -17,14 +26,22 @@ const createFerry = async (ferryData) => {
         throw new Error("Vehicle capacity cannot be negative");
     }
 
-    // Defaults
     const vehicleCap = vehicle_capacity ?? 0;
-    const amenitiesJson = amenities ? JSON.stringify(amenities) : null;
+    const amenitiesJson = amenities
+        ? JSON.stringify(amenities)
+        : null;
 
-    //  Query
     const query = `
-        INSERT INTO ferries (name, vehicle_capacity, passenger_capacity, image_url, amenities)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO ferries
+        (
+            name,
+            vehicle_capacity,
+            passenger_capacity,
+            image_url,
+            amenities,
+            created_by
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await db.query(query, [
@@ -32,18 +49,33 @@ const createFerry = async (ferryData) => {
         vehicleCap,
         passenger_capacity,
         image_url,
-        amenitiesJson
+        amenitiesJson,
+        created_by,
     ]);
 
-    //  Return created ferry
     return {
         id: result.insertId,
         name,
         vehicle_capacity: vehicleCap,
         passenger_capacity,
         image_url,
-        amenities
+        amenities,
+        created_by,
     };
+};
+
+// GET MY FERRY
+const getMyFerries = async (adminId) => {
+  const query = `
+    SELECT id, name
+    FROM ferries
+    WHERE created_by = ?
+    ORDER BY name
+  `;
+
+  const [rows] = await db.query(query, [adminId]);
+
+  return rows;
 };
 
 //  GET BY ID
@@ -114,6 +146,7 @@ const deleteFerry = async (id) => {
 module.exports = {
     createFerry,
     getFerryById,
+    getMyFerries,
     allFerries,
     updateFerry,
     deleteFerry

@@ -32,6 +32,11 @@ app.get("/", (req, res) => {
     res.send("Hello, World!");
 });
 
+const bcrypt = require("bcryptjs");
+
+bcrypt.hash("admin123", 10).then((hash) => {
+  console.log("Hashed Password:", hash);
+});
 const port = 3000;
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);

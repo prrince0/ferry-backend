@@ -2,7 +2,7 @@ const ferry = require('../models/ferry');
 
 //  CREATE
 const createFerry = async (req, res) => {
-    const { name, vehicle_capacity, passenger_capacity, image_url, amenities } = req.body;
+    const { name, vehicle_capacity, passenger_capacity, image_url, amenities} = req.body;
 
     if (!name || !vehicle_capacity || !passenger_capacity) {
         return res.status(400).json({
@@ -23,7 +23,7 @@ const createFerry = async (req, res) => {
             passenger_capacity,
             image_url,
             amenities
-        });
+        }, req);
 
         return res.status(201).json({
             message: "New ferry created successfully",
@@ -151,6 +151,21 @@ const getFerryById = async (req, res) => {
     }
 };
 
+const getMyFerries = async (req, res) => {
+  try {
+    const adminId = req.user.id;
+
+    const ferries = await ferry.getMyFerries(adminId);
+
+    res.status(200).json(ferries);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+
 //  GET ALL
 const getAllFerries = async (req, res) => {
     try {
@@ -172,6 +187,7 @@ module.exports = {
     createFerry,
     updateFerry,
     deleteFerry,
+    getMyFerries,
     getFerryById,
     getAllFerries
 };

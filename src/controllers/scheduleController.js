@@ -3,7 +3,7 @@ const Schedule = require("../models/schedule");
 // create schedule
 
 const createSchedule = async (req, res) => {
-    const { ferry_id, origin, destination, departure_time, arrival_time, base_price } = req.body;
+    const { ferry_id, origin, destination, departure_time, arrival_time, base_price , status } = req.body;
     
     if (!ferry_id || !origin || !destination || !departure_time || !arrival_time || !base_price) {
         return res.status(400).json({
@@ -37,40 +37,56 @@ const createSchedule = async (req, res) => {
 
 const updateSchedule = async (req, res) => {
     const { id } = req.params;
-    const { ferry_id, origin, destination, departure_time, arrival_time, base_price } = req.body;
+
+    const {
+        ferry_id,
+        origin,
+        destination,
+        departure_time,
+        arrival_time,
+        base_price,
+        status
+    } = req.body;
+
     if (!ferry_id || !origin || !destination || !departure_time || !arrival_time || !base_price) {
         return res.status(400).json({
             message: "All fields are required"
         });
-    }   
+    }
+
     if (base_price <= 0) {
         return res.status(400).json({
             message: "Base price must be greater than 0"
         });
     }
+
     if (new Date(departure_time) >= new Date(arrival_time)) {
         return res.status(400).json({
             message: "Arrival time must be after departure time"
         });
-    }   
+    }
+
     try {
-        const updatedSchedule = await schedule.updateSchedule(id, {
+        const updatedSchedule = await Schedule.updateSchedule(id, {
             ferry_id,
             origin,
             destination,
             departure_time,
             arrival_time,
-            base_price
+            base_price,
+            status
         });
+
         return res.status(200).json({
             message: "Schedule updated successfully",
             schedule: updatedSchedule
         });
+
     } catch (err) {
         return res.status(500).json({
             message: err.message || "Error updating schedule"
         });
-    }   
+    }
 };
 
 // delete schedule
