@@ -2,32 +2,58 @@ const redisClient = require('../config/redis');
 const getRedisKey = require('../utils/redisKey');
 const db = require('../config/database');
 
-//addToWaitlist(scheduleId, userId)
+// Add user to waitlist
 const waitlistUser = async (scheduleId, userId) => {
-const key = getRedisKey(`waitlist:${scheduleId}`);
-await redisClient.zadd(key, Date.now(), userId);
-}
+  const key = getRedisKey(`waitlist:${scheduleId}`);
 
-//getPosition(scheduleId, userId)
+  const result = await redisClient.zadd(key, {
+    score: Date.now(),
+    member: userId.toString(),
+  });
+
+  console.log("zadd result:", result);
+};
+
+// Get user's waitlist position
 const getWaitlistPosition = async (scheduleId, userId) => {
-    const position = await redisClient.zrank(getRedisKey(`waitlist:${scheduleId}`), userId);
-    return position !== null ? position + 1 : null; 
-}
+  const key = getRedisKey(`waitlist:${scheduleId}`);
 
-//promoteNext(scheduleId)
+  const position = await redisClient.zrank(
+    key,
+    userId.toString()
+  );
+
+  console.log("Raw position:", position);
+
+  return position !== null ? Number(position) + 1 : null;
+};
+// Promote next user
 const promoteNextInWaitlist = async (scheduleId) => {
-    const nextUserId = await redisClient.zrange(getRedisKey(`waitlist:${scheduleId}`), 0, 0);
-    if (nextUserId.length > 0) {
-        await redisClient.zrem(getRedisKey(`waitlist:${scheduleId}`), nextUserId[0]);
-        return nextUserId[0];
-    }
+  const key = getRedisKey(`waitlist:${scheduleId}`);
+
+  const users = await redisClient.zrange(key, 0, 0);
+
+  if (users.length === 0) {
     return null;
-}
+  }
 
-//getWaitlistCount(scheduleId)
+  const nextUser = users[0];
+
+  await redisClient.zrem(key, nextUser);
+
+  return parseInt(nextUser);
+};
+
+// Count users in waitlist
 const getWaitlistCount = async (scheduleId) => {
-    const count = await redisClient.zcard(getRedisKey(`waitlist:${scheduleId}`));
-    return count;
-}
+  const key = getRedisKey(`waitlist:${scheduleId}`);
 
-module.exports = { waitlistUser, getWaitlistPosition, promoteNextInWaitlist, getWaitlistCount };
+  return await redisClient.zcard(key);
+};
+
+module.exports = {
+  waitlistUser,
+  getWaitlistPosition,
+  promoteNextInWaitlist,
+  getWaitlistCount,
+};

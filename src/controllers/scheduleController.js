@@ -1,41 +1,70 @@
 const Schedule = require("../models/schedule");
 
-// create schedule
+// ================= CREATE SCHEDULE =================
 
 const createSchedule = async (req, res) => {
-    const { ferry_id, origin, destination, departure_time, arrival_time, base_price , status } = req.body;
-    
-    if (!ferry_id || !origin || !destination || !departure_time || !arrival_time || !base_price) {
+    const {
+        ferry_id,
+        origin,
+        destination,
+        departure_time,
+        arrival_time,
+        base_price,
+        available_passenger_seats,
+        available_vehicle_slots
+    } = req.body;
+
+    if (
+        !ferry_id ||
+        !origin ||
+        !destination ||
+        !departure_time ||
+        !arrival_time ||
+        !base_price ||
+        available_passenger_seats == null ||
+        available_vehicle_slots == null
+    ) {
         return res.status(400).json({
+            success: false,
             message: "All fields are required"
         });
     }
-    
-    if (base_price <= 0) {
-        return res.status(400).json({
-            message: "Base price must be greater than 0"
-        });
-    }
-    
-    if (new Date(departure_time) >= new Date(arrival_time)) {
-        return res.status(400).json({
-            message: "Departure time must be before arrival time"
-        });
-    }
-    
+
     try {
-        const scheduleData = { ferry_id, origin, destination, departure_time, arrival_time, base_price };
-        const result = await Schedule.createSchedule(scheduleData);
-        res.status(201).json(result);
-    } catch (err) {
-        res.status(500).json({
-            message: err.message || "Error creating schedule"
+
+        const scheduleData = {
+            ferry_id,
+            origin,
+            destination,
+            departure_time,
+            arrival_time,
+            base_price,
+            available_passenger_seats,
+            available_vehicle_slots
+        };
+
+        const schedule = await Schedule.createSchedule(scheduleData);
+
+        return res.status(201).json({
+            success: true,
+            message: "Schedule created successfully",
+            schedule
         });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
     }
 };
-//update schedule
+
+// ================= UPDATE SCHEDULE =================
 
 const updateSchedule = async (req, res) => {
+
     const { id } = req.params;
 
     const {
@@ -45,28 +74,29 @@ const updateSchedule = async (req, res) => {
         departure_time,
         arrival_time,
         base_price,
-        status
+        status,
+        available_passenger_seats,
+        available_vehicle_slots
     } = req.body;
 
-    if (!ferry_id || !origin || !destination || !departure_time || !arrival_time || !base_price) {
+    if (
+        !ferry_id ||
+        !origin ||
+        !destination ||
+        !departure_time ||
+        !arrival_time ||
+        !base_price ||
+        available_passenger_seats == null ||
+        available_vehicle_slots == null
+    ) {
         return res.status(400).json({
+            success: false,
             message: "All fields are required"
         });
     }
 
-    if (base_price <= 0) {
-        return res.status(400).json({
-            message: "Base price must be greater than 0"
-        });
-    }
-
-    if (new Date(departure_time) >= new Date(arrival_time)) {
-        return res.status(400).json({
-            message: "Arrival time must be after departure time"
-        });
-    }
-
     try {
+
         const updatedSchedule = await Schedule.updateSchedule(id, {
             ferry_id,
             origin,
@@ -74,72 +104,101 @@ const updateSchedule = async (req, res) => {
             departure_time,
             arrival_time,
             base_price,
-            status
+            status,
+            available_passenger_seats,
+            available_vehicle_slots
         });
 
         return res.status(200).json({
+            success: true,
             message: "Schedule updated successfully",
             schedule: updatedSchedule
         });
 
     } catch (err) {
+
         return res.status(500).json({
-            message: err.message || "Error updating schedule"
+            success: false,
+            message: err.message
         });
+
     }
 };
 
-// delete schedule
+// ================= DELETE SCHEDULE =================
+
 const deleteSchedule = async (req, res) => {
+
     const { id } = req.params;
+
     try {
+
         await Schedule.deleteSchedule(id);
+
         return res.status(200).json({
+            success: true,
             message: "Schedule deleted successfully"
         });
-    }
-    catch (err) {
+
+    } catch (err) {
+
         return res.status(500).json({
-            message: err.message || "Error deleting schedule"
+            success: false,
+            message: err.message
         });
+
     }
+
 };
 
-// find schedule by id
+// ================= FIND SCHEDULE BY ID =================
 
 const findScheduleById = async (req, res) => {
+
     const { id } = req.params;
+
     try {
+
         const schedule = await Schedule.findScheduleById(id);
+
         return res.status(200).json(schedule);
-    }
-    catch (err) {
+
+    } catch (err) {
+
         return res.status(500).json({
-            message: err.message || "Error finding schedule"
+            success: false,
+            message: err.message
         });
+
     }
+
 };
 
-// find all schedules
+// ================= FIND ALL SCHEDULES =================
+
 const findAllSchedules = async (req, res) => {
+
     try {
+
         const schedules = await Schedule.findAllSchedules();
+
         return res.status(200).json(schedules);
-    }
-    catch (err) {
+
+    } catch (err) {
+
         return res.status(500).json({
-            message: err.message || "Error finding schedules"
+            success: false,
+            message: err.message
         });
+
     }
+
 };
 
-
- module.exports = {
+module.exports = {
     createSchedule,
     updateSchedule,
     deleteSchedule,
     findScheduleById,
     findAllSchedules
 };
-
-    

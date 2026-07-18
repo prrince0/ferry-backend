@@ -1,22 +1,78 @@
 const db = require("../config/database");
 
-// create schedule
-const createSchedule = async(scheduleData) => {
-  const { ferry_id, origin, destination, departure_time, arrival_time, base_price } = scheduleData;
-  if(!ferry_id || !origin || !destination || !departure_time || !arrival_time || !base_price) {
+
+const createSchedule = async (scheduleData) => {
+  const {
+    ferry_id,
+    origin,
+    destination,
+    departure_time,
+    arrival_time,
+    base_price,
+    available_passenger_seats,
+    available_vehicle_slots,
+  } = scheduleData;
+
+  if (
+    !ferry_id ||
+    !origin ||
+    !destination ||
+    !departure_time ||
+    !arrival_time ||
+    !base_price ||
+    available_passenger_seats == null ||
+    available_vehicle_slots == null
+  ) {
     throw new Error("All fields are required");
   }
-  if(base_price <= 0) {
+
+  if (base_price <= 0) {
     throw new Error("Base price must be greater than 0");
   }
-  if(new Date(departure_time) >= new Date(arrival_time)) {
+
+  if (available_passenger_seats < 0 || available_vehicle_slots < 0) {
+    throw new Error("Available seats cannot be negative");
+  }
+
+  if (new Date(departure_time) >= new Date(arrival_time)) {
     throw new Error("Departure time must be before arrival time");
   }
-  const [ferry] = await db.query("SELECT id FROM ferries WHERE id = ?", [ferry_id]);
-  if (ferry.length === 0) throw new Error("Ferry not found");
 
-  const query =`INSERT INTO schedules (ferry_id, origin, destination, departure_time, arrival_time, base_price) VALUES (?, ?, ?, ?, ?, ?)`;
-  const [result] = await db.query(query, [ferry_id, origin, destination, departure_time, arrival_time, base_price]);
+  const [ferry] = await db.query(
+    "SELECT id FROM ferries WHERE id = ?",
+    [ferry_id]
+  );
+
+  if (ferry.length === 0) {
+    throw new Error("Ferry not found");
+  }
+
+  const query = `
+    INSERT INTO schedules
+    (
+      ferry_id,
+      origin,
+      destination,
+      departure_time,
+      arrival_time,
+      base_price,
+      available_passenger_seats,
+      available_vehicle_slots
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  const [result] = await db.query(query, [
+    ferry_id,
+    origin,
+    destination,
+    departure_time,
+    arrival_time,
+    base_price,
+    available_passenger_seats,
+    available_vehicle_slots,
+  ]);
+
   return {
     id: result.insertId,
     ferry_id,
@@ -24,11 +80,13 @@ const createSchedule = async(scheduleData) => {
     destination,
     departure_time,
     arrival_time,
-    base_price
+    base_price,
+    available_passenger_seats,
+    available_vehicle_slots,
   };
 };
 
-// update scheduale
+// ================= UPDATE SCHEDULE =================
 const updateSchedule = async (scheduleId, scheduleData) => {
   const {
     ferry_id,
@@ -37,15 +95,30 @@ const updateSchedule = async (scheduleId, scheduleData) => {
     departure_time,
     arrival_time,
     base_price,
-    status
+    status,
+    available_passenger_seats,
+    available_vehicle_slots,
   } = scheduleData;
 
-  if (!ferry_id || !origin || !destination || !departure_time || !arrival_time || !base_price) {
+  if (
+    !ferry_id ||
+    !origin ||
+    !destination ||
+    !departure_time ||
+    !arrival_time ||
+    !base_price ||
+    available_passenger_seats == null ||
+    available_vehicle_slots == null
+  ) {
     throw new Error("All fields are required");
   }
 
   if (base_price <= 0) {
     throw new Error("Base price must be greater than 0");
+  }
+
+  if (available_passenger_seats < 0 || available_vehicle_slots < 0) {
+    throw new Error("Available seats cannot be negative");
   }
 
   if (new Date(departure_time) >= new Date(arrival_time)) {
@@ -61,7 +134,9 @@ const updateSchedule = async (scheduleId, scheduleData) => {
       departure_time = ?,
       arrival_time = ?,
       base_price = ?,
-      status = ?
+      status = ?,
+      available_passenger_seats = ?,
+      available_vehicle_slots = ?
     WHERE id = ?
   `;
 
@@ -73,7 +148,9 @@ const updateSchedule = async (scheduleId, scheduleData) => {
     arrival_time,
     base_price,
     status,
-    scheduleId
+    available_passenger_seats,
+    available_vehicle_slots,
+    scheduleId,
   ]);
 
   if (result.affectedRows === 0) {
@@ -88,40 +165,51 @@ const updateSchedule = async (scheduleId, scheduleData) => {
   return updated[0];
 };
 
-// delete scheduale
-const deleteSchedule = async(scheduleId) => {
-    const query = "DELETE FROM schedules WHERE id = ?";
-    const [result] = await db.query(query, [scheduleId]);
-    if (result.affectedRows === 0) {
-        throw new Error("Schedule not found");
-    }
+// ================= DELETE SCHEDULE =================
+const deleteSchedule = async (scheduleId) => {
+  const [result] = await db.query(
+    "DELETE FROM schedules WHERE id = ?",
+    [scheduleId]
+  );
+
+  if (result.affectedRows === 0) {
+    throw new Error("Schedule not found");
+  }
 };
 
-// find schedule by id
+// ================= FIND BY ID =================
+const findScheduleById = async (scheduleId) => {
+  const [result] = await db.query(
+    "SELECT * FROM schedules WHERE id = ?",
+    [scheduleId]
+  );
 
-const findScheduleById = async(scheduleId) => {
-   const query = "SELECT * FROM schedules WHERE id = ?";
-   const [result] = await db.query(query, [scheduleId]);
-    if (result.length === 0) {
-        throw new Error("Schedule not found");
-    }
-    return result[0]; 
+  if (result.length === 0) {
+    throw new Error("Schedule not found");
+  }
+
+  return result[0];
 };
 
-const findAllSchedules = async() => {
-    const query = "SELECT * FROM schedules";
-    const [result] = await db.query(query);
-    return result;
+// ================= FIND ALL =================
+const findAllSchedules = async () => {
+  const [result] = await db.query(`
+    SELECT
+      s.*,
+      f.name AS ferry_name
+    FROM schedules s
+    JOIN ferries f
+      ON s.ferry_id = f.id
+    ORDER BY s.departure_time ASC
+  `);
+
+  return result;
 };
-
-
-
 
 module.exports = {
   createSchedule,
   updateSchedule,
   deleteSchedule,
   findScheduleById,
-  findAllSchedules
+  findAllSchedules,
 };
-
