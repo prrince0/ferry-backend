@@ -1,4 +1,9 @@
 const db = require("../config/database");
+const {
+    waitlistUser,
+    getWaitlistPosition,
+    getWaitlistCount
+} = require("../services/waitlistService");
 
 
 const createSchedule = async (scheduleData) => {
@@ -193,7 +198,8 @@ const findScheduleById = async (scheduleId) => {
 
 // ================= FIND ALL =================
 const findAllSchedules = async () => {
-  const [result] = await db.query(`
+  try{
+   const [result] = await db.query(`
     SELECT
       s.*,
       f.name AS ferry_name
@@ -202,8 +208,13 @@ const findAllSchedules = async () => {
       ON s.ferry_id = f.id
     ORDER BY s.departure_time ASC
   `);
-
+    
   return result;
+  }catch (err) {
+    console.error("findAllSchedules Error:", err);
+    throw err;
+  }
+  
 };
 
 module.exports = {

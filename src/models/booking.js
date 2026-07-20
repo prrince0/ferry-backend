@@ -1,9 +1,9 @@
 const db = require("../config/database");
 const {
     waitlistUser,
-    getWaitlistPosition
+    getWaitlistPosition,
+    getWaitlistCount
 } = require("../services/waitlistService");
-
 const createBooking = async (bookingData) => {
     const {
         user_id,
@@ -45,41 +45,86 @@ const createBooking = async (bookingData) => {
         const schedule = scheduleRows[0];
 
         console.log("Requested Passenger:", passenger_seats);
-       console.log("Available Passenger:", schedule.available_passenger_seats);
+        console.log("Available Passenger:", schedule.available_passenger_seats);
 
-      console.log("Requested Vehicle:", vehicle_slots);
-      console.log("Available Vehicle:", schedule.available_vehicle_slots);
+        console.log("Requested Vehicle:", vehicle_slots);
+        console.log("Available Vehicle:", schedule.available_vehicle_slots);
 
-        // Not enough seats -> add to waitlist
-        // Not enough seats -> Add to waitlist
-if (
-    passenger_seats > schedule.available_passenger_seats ||
-    vehicle_slots > schedule.available_vehicle_slots
-) {
-
-    console.log("🚨 Waitlist condition matched");
-
-    await waitlistUser(schedule_id, user_id);
-
-    const position = await getWaitlistPosition(
-        schedule_id,
-        user_id
-    );
-
-    await connection.rollback();   // No booking is created, so rollback the transaction
-
-    return {
-        waitlisted: true,
-        position,
-        message: `No seats available. Added to waitlist. Position: ${position}`
-    };
-}
-        // Calculate total price
         const total_price =
             (passenger_seats + vehicle_slots) *
             schedule.base_price;
 
-        // Create booking
+        // ===================================================
+        // WAITLIST
+        // ===================================================
+
+        if (
+            passenger_seats > schedule.available_passenger_seats ||
+            vehicle_slots > schedule.available_vehicle_slots
+        ) {
+
+            console.log("🚨 Waitlist condition matched");
+
+            // Find next waitlist number
+            const [countRows] = await connection.query(
+                `
+                SELECT COUNT(*) AS total
+                FROM bookings
+                WHERE schedule_id = ?
+                AND booking_status = 'waiting'
+                `,
+                [schedule_id]
+            );
+
+            const waitlistNumber =
+                countRows[0].total + 1;
+
+            // Save waiting booking in MySQL
+            const [result] = await connection.query(
+                `
+                INSERT INTO bookings
+                (
+                    user_id,
+                    schedule_id,
+                    passenger_seats,
+                    vehicle_slots,
+                    total_price,
+                    booking_status,
+                    waitlist_number
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                `,
+                [
+                    user_id,
+                    schedule_id,
+                    passenger_seats,
+                    vehicle_slots,
+                    total_price,
+                    "waiting",
+                    waitlistNumber
+                ]
+            );
+
+            // Store BOOKING ID in Redis
+            await waitlistUser(
+                schedule_id,
+                result.insertId
+            );
+
+            await connection.commit();
+
+            return {
+                waitlisted: true,
+                booking_id: result.insertId,
+                waitlist_number: waitlistNumber,
+                message: `Added to Waitlist. WL${waitlistNumber}`
+            };
+        }
+
+        // ===================================================
+        // CONFIRMED BOOKING
+        // ===================================================
+
         const [result] = await connection.query(
             `
             INSERT INTO bookings
@@ -89,9 +134,11 @@ if (
                 passenger_seats,
                 vehicle_slots,
                 total_price,
+                booking_status,
+                waitlist_number,
                 status
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `,
             [
                 user_id,
@@ -99,11 +146,12 @@ if (
                 passenger_seats,
                 vehicle_slots,
                 total_price,
+                "confirmed",
+                null,
                 status || "confirmed"
             ]
         );
 
-        // Reduce available seats
         await connection.query(
             `
             UPDATE schedules
@@ -132,7 +180,7 @@ if (
             passenger_seats,
             vehicle_slots,
             total_price,
-            status: status || "confirmed"
+            booking_status: "confirmed"
         };
 
     } catch (err) {

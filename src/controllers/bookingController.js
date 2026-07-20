@@ -3,13 +3,14 @@ const Booking = require("../models/booking");
 const Schedule = require("../models/schedule");
 const redisClient = require('../config/upstash');
 const getRedisKey = require('../utils/redisKey');  
-const { waitlistUser, getWaitlistPosition } = require('../services/waitlistService');
+const { waitlistUser, getWaitlistPosition , getWaitlistCount} = require('../services/waitlistService');
 
 // -------------------- Create Booking --------------------
 
 const createBooking = async (req, res) => {
 
-     console.log("✅ createBooking called");
+    console.log("✅ createBooking called");
+
     try {
 
         const user_id = req.user.id;
@@ -59,6 +60,7 @@ const createBooking = async (req, res) => {
             });
         }
 
+        // Call Model
         const booking = await Booking.createBooking({
             user_id,
             schedule_id,
@@ -66,17 +68,27 @@ const createBooking = async (req, res) => {
             vehicle_slots
         });
 
-        // User added to waitlist
+        console.log("Booking returned:", booking);
+
+        // ==========================
+        // WAITLIST RESPONSE
+        // ==========================
         if (booking.waitlisted) {
+
             return res.status(200).json({
                 success: true,
                 waitlisted: true,
-                position: booking.position,
+                booking_id: booking.booking_id,
+                waitlist_number: booking.waitlist_number,
                 message: booking.message
             });
+
         }
 
-        // Booking confirmed
+        // ==========================
+        // CONFIRMED BOOKING
+        // ==========================
+
         return res.status(201).json({
             success: true,
             waitlisted: false,
@@ -94,6 +106,7 @@ const createBooking = async (req, res) => {
         });
 
     }
+
 };
 
 // -------------------- Get Booking By ID --------------------
