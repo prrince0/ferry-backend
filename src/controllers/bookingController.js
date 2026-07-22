@@ -152,9 +152,11 @@ const getMyBookings = async (req, res) => {
 
     } catch (err) {
 
-        res.status(500).json({
-            message: err.message
-        });
+           console.log("Status:", err.response?.status);
+            console.log("Data:", err.response?.data);
+            console.log("Full Error:", err);
+
+    alert(err.response?.data?.message || "Failed to load bookings");
 
     }
 

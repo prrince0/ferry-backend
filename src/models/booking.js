@@ -4,6 +4,7 @@ const {
     getWaitlistPosition,
     getWaitlistCount
 } = require("../services/waitlistService");
+
 const createBooking = async (bookingData) => {
     const {
         user_id,
@@ -57,10 +58,12 @@ const createBooking = async (bookingData) => {
         // ===================================================
         // WAITLIST
         // ===================================================
+        if(vehicle_slots > schedule.available_vehicle_slots) {
+            throw new Error("Not enough vehicle slots available");
+        }
 
         if (
-            passenger_seats > schedule.available_passenger_seats ||
-            vehicle_slots > schedule.available_vehicle_slots
+            passenger_seats > schedule.available_passenger_seats
         ) {
 
             console.log("🚨 Waitlist condition matched");
@@ -76,8 +79,7 @@ const createBooking = async (bookingData) => {
                 [schedule_id]
             );
 
-            const waitlistNumber =
-                countRows[0].total + 1;
+            const waitlistNumber = countRows[0].total + 1;
 
             // Save waiting booking in MySQL
             const [result] = await connection.query(
@@ -105,10 +107,20 @@ const createBooking = async (bookingData) => {
                 ]
             );
 
-            // Store BOOKING ID in Redis
+            // Add booking to Redis queue
             await waitlistUser(
                 schedule_id,
                 result.insertId
+            );
+
+            // Increase waitlist count
+            await connection.query(
+                `
+                UPDATE schedules
+                SET waitlist_count = waitlist_count + 1
+                WHERE id = ?
+                `,
+                [schedule_id]
             );
 
             await connection.commit();
@@ -152,6 +164,7 @@ const createBooking = async (bookingData) => {
             ]
         );
 
+        // Reduce available seats
         await connection.query(
             `
             UPDATE schedules
@@ -204,14 +217,33 @@ const getBookingById = async (bookingId) => {
 };
 
 const getBookingsByUserId = async (userId) => {
+
     if (!userId) {
         throw new Error("User ID is required");
     }
-    const query = `SELECT * FROM bookings WHERE user_id = ? ORDER BY booking_date DESC`;
-    const [results] = await db.query(query, [userId]);
+
+    const [results] = await db.query(
+        `
+       SELECT
+    b.*,
+    s.origin,
+    s.destination,
+    s.departure_time,
+    s.arrival_time,
+    f.name AS ferry_name
+FROM bookings b
+JOIN schedules s
+    ON b.schedule_id = s.id
+JOIN ferries f
+    ON s.ferry_id = f.id
+WHERE b.user_id = ?
+ORDER BY b.id DESC;
+        `,
+        [userId]
+    );
+
     return results;
 };
-
 const cancelBooking = async (bookingId) => {
     if (!bookingId) {
         throw new Error("Booking ID is required");

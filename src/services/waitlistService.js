@@ -4,6 +4,7 @@ const db = require('../config/database');
 
 // Add user to waitlist
 const waitlistUser = async (scheduleId, userId) => {
+  
   const key = getRedisKey(`waitlist:${scheduleId}`);
 
   const result = await redisClient.zadd(key, {
@@ -12,6 +13,8 @@ const waitlistUser = async (scheduleId, userId) => {
   });
 
   console.log("zadd result:", result);
+  
+
 };
 
 // Get user's waitlist position
