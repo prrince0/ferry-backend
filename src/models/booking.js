@@ -134,7 +134,7 @@ const createBooking = async (bookingData) => {
         }
 
         // ===================================================
-        // CONFIRMED BOOKING
+        // CONFIRMED BOOKING //
         // ===================================================
 
         const [result] = await connection.query(
@@ -231,26 +231,140 @@ const getBookingsByUserId = async (userId) => {
     s.departure_time,
     s.arrival_time,
     f.name AS ferry_name
-FROM bookings b
-JOIN schedules s
+    FROM bookings b
+    JOIN schedules s
     ON b.schedule_id = s.id
-JOIN ferries f
+    JOIN ferries f
     ON s.ferry_id = f.id
-WHERE b.user_id = ?
-ORDER BY b.id DESC;
+    WHERE b.user_id = ?
+    ORDER BY b.id DESC;
         `,
         [userId]
     );
 
     return results;
 };
+
+
+// cancel Booking by id
+
 const cancelBooking = async (bookingId) => {
     if (!bookingId) {
         throw new Error("Booking ID is required");
     }
-    const query = `UPDATE bookings SET status = 'cancelled' WHERE id = ?`;
-    const [result] = await db.query(query, [bookingId]);
-    return result;
-};
 
+    const connection = await db.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        // Get booking details
+        const [bookingRows] = await connection.query(
+            `SELECT * FROM bookings WHERE id = ?`,
+            [bookingId]
+        );
+
+        if (bookingRows.length === 0) {
+            throw new Error("Booking not found");
+        }
+
+        const booking = bookingRows[0];
+        const scheduleId = booking.schedule_id;
+
+        // Get schedule details
+        const [scheduleRows] = await connection.query(
+            `SELECT * FROM schedules WHERE id = ?`,
+            [scheduleId]
+        );
+
+        if (scheduleRows.length === 0) {
+            throw new Error("Schedule not found");
+        }
+
+        const schedule = scheduleRows[0];
+
+        // Cancel current booking
+        console.log("Cancelling booking:", bookingId);
+        await connection.query(
+            `UPDATE bookings
+             SET status='cancelled',
+                 booking_status='cancelled'
+             WHERE id=?`,
+            [bookingId]
+        );
+        console.log("Booking updated");
+        const [rows] = await connection.query(
+  `SELECT status, booking_status
+   FROM bookings
+   WHERE id = ?`,
+  [bookingId]
+);
+
+console.log("After update:", rows[0]);
+
+        // Check waitlist
+        if (schedule.waitlist_count > 0) {
+
+            // Oldest waiting passenger
+            const [waitlistRows] = await connection.query(
+                `SELECT *
+                FROM bookings
+                WHERE schedule_id = ?
+                AND booking_status='waiting'
+                 ORDER BY booking_date ASC
+                 LIMIT 1`,
+                [scheduleId]
+            );
+
+            if (waitlistRows.length > 0) {
+
+                const waitlistedBooking = waitlistRows[0];
+
+                // Confirm passenger
+                await connection.query(
+                    `UPDATE bookings
+                     SET status='confirmed',
+                         booking_status='confirmed'
+                     WHERE id=?`,
+                    [waitlistedBooking.id]
+                );
+
+                // Reduce waitlist
+                await connection.query(
+                    `UPDATE schedules
+                     SET waitlist_count = waitlist_count - 1
+                     WHERE id=?`,
+                    [scheduleId]
+                );
+            }
+
+        } else {
+
+            // Increase available seat
+            await connection.query(
+                `UPDATE schedules
+                 SET available_passenger_seats =
+                     available_passenger_seats + 1
+                 WHERE id=?`,
+                [scheduleId]
+            );
+        }
+
+        await connection.commit();
+
+        return {
+            success: true,
+            message: "Booking cancelled successfully"
+        };
+
+    } catch (err) {
+
+        await connection.rollback();
+        throw err;
+
+    } finally {
+
+        connection.release();
+    }
+};
 module.exports = { createBooking, getBookingById, getBookingsByUserId, cancelBooking };
