@@ -2,6 +2,7 @@ const ferryController = require("../controllers/ferryController");
 const express = require("express");
 const router = express.Router();
 const { protect, restrictTo } = require("../middleware/authmiddleware");
+const upload = require("../middleware/upload");
 
 // Public routes
 router.get("/", protect, ferryController.getAllFerries);
@@ -17,7 +18,12 @@ router.get(
 router.get("/:id", protect, ferryController.getFerryById);
 
 // Admin routes
-router.post("/", protect, restrictTo("admin"), ferryController.createFerry);
+router.post(
+    "/",
+    protect,
+    upload.single("image"),
+    ferryController.createFerry
+);
 router.put("/:id", protect, restrictTo("admin"), ferryController.updateFerry);
 router.delete("/:id", protect, restrictTo("admin"), ferryController.deleteFerry);
 

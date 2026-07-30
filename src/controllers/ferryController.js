@@ -2,8 +2,10 @@ const ferry = require('../models/ferry');
 
 //  CREATE
 const createFerry = async (req, res) => {
-    const { name, vehicle_capacity, passenger_capacity, image_url, amenities} = req.body;
-
+    const { name, vehicle_capacity, passenger_capacity, amenities} = req.body;
+     const image_url = req.file
+    ? `/uploads/${req.file.filename}`
+    : null;
     if (!name || !vehicle_capacity || !passenger_capacity) {
         return res.status(400).json({
             message: "Name, vehicle capacity and passenger capacity are required"

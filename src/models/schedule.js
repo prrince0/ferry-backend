@@ -202,7 +202,8 @@ const findAllSchedules = async () => {
    const [result] = await db.query(`
     SELECT
       s.*,
-      f.name AS ferry_name
+      f.name AS ferry_name,
+       f.image_url
     FROM schedules s
     JOIN ferries f
       ON s.ferry_id = f.id

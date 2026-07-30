@@ -6,7 +6,8 @@ const searchSchedules = async({ origin,
         const query = `
 SELECT
     s.*,
-    f.name AS ferry_name
+    f.name AS ferry_name,
+    f.image_url
 FROM schedules s
 JOIN ferries f
 ON s.ferry_id = f.id
@@ -17,6 +18,7 @@ WHERE
     AND s.status='scheduled'
 ORDER BY s.departure_time ASC
 `;
+
 
 const [rows] = await db.query(query, [
     `%${origin}%`,
