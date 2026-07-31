@@ -367,4 +367,50 @@ console.log("After update:", rows[0]);
         connection.release();
     }
 };
-module.exports = { createBooking, getBookingById, getBookingsByUserId, cancelBooking };
+
+
+const getBookingsByAdmin = async (adminId) => {
+
+    const [rows] = await db.query(
+        `
+        SELECT
+            b.id,
+
+            u.full_name AS passenger_name,
+            u.email,
+
+            f.name AS ferry_name,
+
+            s.origin,
+            s.destination,
+            s.departure_time,
+            s.arrival_time,
+
+            b.passenger_seats,
+            b.vehicle_slots,
+
+            b.total_price,
+
+            b.booking_status
+
+        FROM bookings b
+
+        JOIN users u
+            ON b.user_id = u.id
+
+        JOIN schedules s
+            ON b.schedule_id = s.id
+
+        JOIN ferries f
+            ON s.ferry_id = f.id
+
+        WHERE f.created_by = ?
+
+        ORDER BY b.id DESC
+        `,
+        [adminId]
+    );
+
+    return rows;
+};
+module.exports = { createBooking, getBookingById, getBookingsByUserId, cancelBooking , getBookingsByAdmin};

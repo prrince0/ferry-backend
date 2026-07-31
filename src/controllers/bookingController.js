@@ -212,6 +212,26 @@ const cancelBooking = async (req, res) => {
 
 };
 
+const getAdminBookings = async (req, res) => {
+
+    try {
+
+        const bookings = await Booking.getBookingsByAdmin(req.user.id);
+
+        res.json(bookings);
+
+    } catch (err) {
+
+        console.error(err);
+
+        res.status(500).json({
+            message: err.message
+        });
+
+    }
+
+};
+
 module.exports = {
 
     createBooking,
@@ -222,6 +242,8 @@ module.exports = {
 
     getAllBookings,
 
-    cancelBooking
+    cancelBooking,
+
+    getAdminBookings
 
 };

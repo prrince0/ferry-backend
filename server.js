@@ -14,6 +14,7 @@ const scheduleRoutes = require("./src/routes/scheduleroutes");
 const bookingRoutes = require('./src/routes/bookingroutes');
 const userRoutes = require("./src/routes/userRoutes");
 const searchRoutes = require("./src/routes/searchroutes");
+const dashboardRoutes = require("./src/routes/dashboardRoutes");
 const connection = require("./src/config/database");
 const redisClient = require('./src/config/redis');
 const initializeSeatCounters = require('./src/utils/redisinit');
@@ -33,6 +34,7 @@ app.use("/api/schedules", scheduleRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use("/api/users", userRoutes);  
 app.use("/api/search", searchRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.get("/", (req, res) => {
     res.send("Hello, World!");

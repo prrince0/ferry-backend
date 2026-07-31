@@ -66,16 +66,16 @@ const createFerry = async (ferryData, req) => {
 
 // GET MY FERRY
 const getMyFerries = async (adminId) => {
-  const query = `
-    SELECT id, name
-    FROM ferries
-    WHERE created_by = ?
-    ORDER BY name
-  `;
+    const query = `
+        SELECT *
+        FROM ferries
+        WHERE created_by = ?
+        ORDER BY id DESC
+    `;
 
-  const [rows] = await db.query(query, [adminId]);
+    const [rows] = await db.query(query, [adminId]);
 
-  return rows;
+    return rows;
 };
 
 //  GET BY ID

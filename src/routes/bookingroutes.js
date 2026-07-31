@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
+
 const bookingController = require("../controllers/bookingController");
 const { protect } = require("../middleware/authmiddleware");
 
@@ -10,10 +11,15 @@ router.post("/", protect, bookingController.createBooking);
 // Logged-in user's bookings
 router.get("/my-bookings", protect, bookingController.getMyBookings);
 
+// Admin's bookings
+router.get("/admin", protect, bookingController.getAdminBookings);
+
 // Booking details
 router.get("/:id", protect, bookingController.getBookingById);
 
 // Cancel booking
 router.delete("/:id", protect, bookingController.cancelBooking);
+
+
 
 module.exports = router;

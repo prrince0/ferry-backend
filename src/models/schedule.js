@@ -100,30 +100,22 @@ const updateSchedule = async (scheduleId, scheduleData) => {
     departure_time,
     arrival_time,
     base_price,
-    status,
-    available_passenger_seats,
-    available_vehicle_slots,
+    status
   } = scheduleData;
 
   if (
-    !ferry_id ||
-    !origin ||
-    !destination ||
-    !departure_time ||
-    !arrival_time ||
-    !base_price ||
-    available_passenger_seats == null ||
-    available_vehicle_slots == null
-  ) {
-    throw new Error("All fields are required");
-  }
+  ferry_id === "" ||
+  origin.trim() === "" ||
+  destination.trim() === "" ||
+  departure_time === "" ||
+  arrival_time === "" ||
+  base_price === ""
+) {
+  throw new Error("All fields are required");
+}
 
   if (base_price <= 0) {
     throw new Error("Base price must be greater than 0");
-  }
-
-  if (available_passenger_seats < 0 || available_vehicle_slots < 0) {
-    throw new Error("Available seats cannot be negative");
   }
 
   if (new Date(departure_time) >= new Date(arrival_time)) {
@@ -139,9 +131,7 @@ const updateSchedule = async (scheduleId, scheduleData) => {
       departure_time = ?,
       arrival_time = ?,
       base_price = ?,
-      status = ?,
-      available_passenger_seats = ?,
-      available_vehicle_slots = ?
+      status = ?
     WHERE id = ?
   `;
 
@@ -153,8 +143,6 @@ const updateSchedule = async (scheduleId, scheduleData) => {
     arrival_time,
     base_price,
     status,
-    available_passenger_seats,
-    available_vehicle_slots,
     scheduleId,
   ]);
 
@@ -185,7 +173,16 @@ const deleteSchedule = async (scheduleId) => {
 // ================= FIND BY ID =================
 const findScheduleById = async (scheduleId) => {
   const [result] = await db.query(
-    "SELECT * FROM schedules WHERE id = ?",
+    `
+    SELECT
+      s.*,
+      f.name AS ferry_name,
+      f.image_url
+    FROM schedules s
+    JOIN ferries f
+      ON s.ferry_id = f.id
+    WHERE s.id = ?
+    `,
     [scheduleId]
   );
 

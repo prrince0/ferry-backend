@@ -74,9 +74,8 @@ const updateSchedule = async (req, res) => {
         departure_time,
         arrival_time,
         base_price,
-        status,
-        available_passenger_seats,
-        available_vehicle_slots
+        status
+        
     } = req.body;
 
     if (
@@ -85,9 +84,7 @@ const updateSchedule = async (req, res) => {
         !destination ||
         !departure_time ||
         !arrival_time ||
-        !base_price ||
-        available_passenger_seats == null ||
-        available_vehicle_slots == null
+        !base_price 
     ) {
         return res.status(400).json({
             success: false,
@@ -104,9 +101,7 @@ const updateSchedule = async (req, res) => {
             departure_time,
             arrival_time,
             base_price,
-            status,
-            available_passenger_seats,
-            available_vehicle_slots
+            status
         });
 
         return res.status(200).json({
