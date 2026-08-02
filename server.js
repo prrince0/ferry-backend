@@ -42,10 +42,8 @@ app.get("/", (req, res) => {
 
 const bcrypt = require("bcryptjs");
 
-bcrypt.hash("admin123", 10).then((hash) => {
-  console.log("Hashed Password:", hash);
-});
-const port = 3000;
-app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
